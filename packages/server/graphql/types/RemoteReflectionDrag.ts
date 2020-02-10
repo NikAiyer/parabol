@@ -1,7 +1,7 @@
 import {GraphQLFloat, GraphQLID, GraphQLNonNull, GraphQLObjectType, GraphQLString} from 'graphql'
 import {GQLContext} from '../graphql'
 
-const RemoteReflectionDrag = new GraphQLObjectType({
+const RemoteReflectionDrag = new GraphQLObjectType<any, GQLContext>({
   name: 'RemoteReflectionDrag',
   description: 'Info associated with a current drag',
   fields: () => ({
@@ -49,7 +49,7 @@ const RemoteReflectionDrag = new GraphQLObjectType({
     clientY: {
       type: GraphQLFloat,
       description: 'the top of the source, relative to the client window'
-    },
+    }
   })
 })
 

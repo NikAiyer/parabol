@@ -8,6 +8,7 @@ import StripeManager from '../../../utils/StripeManager'
 import {fromEpochSeconds} from '../../../utils/epochTime'
 import hideConversionModal from '../../mutations/helpers/hideConversionModal'
 import User from '../../../database/types/User'
+import setUserTierForOrgId from '../../../utils/setUserTierForOrgId'
 
 const getBillingLeaderUser = async (
   email: string | null,
@@ -17,7 +18,7 @@ const getBillingLeaderUser = async (
   const r = await getRethink()
   if (email) {
     const user = await r
-      .table<User>('User')
+      .table('User')
       .getAll(email, {index: 'email'})
       .nth(0)
       .default(null)
@@ -47,7 +48,7 @@ const getBillingLeaderUser = async (
   )
   const billingLeaderUserIds = billingLeaders.map(({userId}) => userId)
   return r
-    .table<User>('User')
+    .table('User')
     .getAll(r.args(billingLeaderUserIds))
     .nth(0)
     .default(null)
@@ -149,6 +150,8 @@ export default {
           updatedAt: now
         })
     }).run()
+
+    await setUserTierForOrgId(orgId)
     await hideConversionModal(orgId, dataLoader)
     dataLoader.get('organizations').clear(orgId)
     return {orgId}

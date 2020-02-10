@@ -26,7 +26,9 @@ const useMenuPortal = (
   setPortalStatus: any,
   isDropdown: boolean,
   menuPosition: MenuPosition,
-  loadingDelayRef: LoadingDelayRef
+  loadingDelayRef: LoadingDelayRef,
+  menuContentStyles: any = {},
+  menuContentRef: RefObject<HTMLDivElement> | undefined
 ) => {
   useEffect(() => {
     let isMounted = true
@@ -56,7 +58,12 @@ const useMenuPortal = (
             </Menu>
           )}
         >
-          <MenuContents minWidth={minWidth} portalStatus={portalStatus}>
+          <MenuContents
+            minWidth={minWidth}
+            portalStatus={portalStatus}
+            menuContentStyles={menuContentStyles}
+            ref={menuContentRef}
+          >
             <Suspense
               fallback={
                 <LoadingComponent

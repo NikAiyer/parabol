@@ -1,7 +1,7 @@
 import getRethink from '../database/rethinkDriver'
 import countTiersForUserId from '../graphql/queries/helpers/countTiersForUserId'
 import segmentIo from './segmentIo'
-import {ISegmentEventTrackOptions, TierEnum} from '../../client/types/graphql'
+import {ISegmentEventTrackOptions, TierEnum, OrgUserRole} from '../../client/types/graphql'
 
 const PERSONAL_TIER_MAX_TEAMS = 2
 
@@ -45,29 +45,13 @@ const getHubspotTraits = async (userIds: string[]) => {
       isAnyBillingLeader: r
         .table('OrganizationUser')
         .getAll(userId, {index: 'userId'})
-        .filter({removedAt: null, role: 'billingLeader'})
+        .filter({removedAt: null, role: OrgUserRole.BILLING_LEADER})
         .count()
         .ge(1),
       highestTier: r
-        .table('OrganizationUser')
-        .getAll(userId, {index: 'userId'})
-        .filter({removedAt: null})
-        .coerceTo('array')('orgId')
-        .default([])
-        .do((orgIds) => {
-          return r
-            .table('Organization')
-            .getAll(r.args(orgIds), {index: 'id'})
-            .coerceTo('array')('tier')
-            .distinct()
-        })
-        .do((tiers) => {
-          return r.branch(
-            tiers.contains(TierEnum.enterprise),
-            TierEnum.enterprise,
-            r.branch(tiers.contains(TierEnum.pro), TierEnum.pro, TierEnum.personal)
-          )
-        })
+        .table('User')
+        .get(userId)('tier')
+        .default(TierEnum.personal)
     }))
     .run() as Promise<HubspotTraits[]>
 }
@@ -146,7 +130,8 @@ const sendSegmentEvent = async (
   const userIds = Array.isArray(maybeUserIds) ? maybeUserIds : [maybeUserIds]
   if (userIds.length === 0) return
   const [traitsArr, orgId] = await getSegmentProps(userIds, options.teamId)
-  traitsArr.forEach((traitsWithId) => {
+    // typescript 3.7 is borked
+  ;(traitsArr as Traits[]).forEach((traitsWithId) => {
     const {id: userId, ...traits} = traitsWithId
     segmentIo.track({
       userId,

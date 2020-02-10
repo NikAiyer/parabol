@@ -1,15 +1,14 @@
-import {TeamInvitationErrorAccepted_verifiedInvitation} from '../__generated__/TeamInvitationErrorAccepted_verifiedInvitation.graphql'
-import React from 'react'
 import styled from '@emotion/styled'
-import {createFragmentContainer} from 'react-relay'
 import graphql from 'babel-plugin-relay/macro'
-import InviteDialog from './InviteDialog'
-import DialogContent from './DialogContent'
-import InvitationDialogCopy from './InvitationDialogCopy'
-import DialogTitle from './DialogTitle'
-import StyledLink from './StyledLink'
-import {meetingTypeToLabel, meetingTypeToSlug} from '../utils/meetings/lookups'
+import React from 'react'
+import {createFragmentContainer} from 'react-relay'
 import useDocumentTitle from '../hooks/useDocumentTitle'
+import {TeamInvitationErrorAccepted_verifiedInvitation} from '../__generated__/TeamInvitationErrorAccepted_verifiedInvitation.graphql'
+import DialogContent from './DialogContent'
+import DialogTitle from './DialogTitle'
+import InvitationDialogCopy from './InvitationDialogCopy'
+import InviteDialog from './InviteDialog'
+import StyledLink from './StyledLink'
 
 interface Props {
   verifiedInvitation: TeamInvitationErrorAccepted_verifiedInvitation
@@ -21,8 +20,8 @@ const InlineCopy = styled(InvitationDialogCopy)({
 
 const TeamInvitationErrorAccepted = (props: Props) => {
   const {verifiedInvitation} = props
-  const {meetingType, teamInvitation, teamName} = verifiedInvitation
-  useDocumentTitle(`Token already accepted | Team Invitation`)
+  const {meetingId, meetingName, teamInvitation, teamName} = verifiedInvitation
+  useDocumentTitle(`Token already accepted | Team Invitation`, 'Team Invitation')
   if (!teamInvitation || teamName === null) return null
   const {teamId} = teamInvitation
   return (
@@ -32,13 +31,10 @@ const TeamInvitationErrorAccepted = (props: Props) => {
         <InvitationDialogCopy>
           The invitation to {teamName} has already been redeemed.
         </InvitationDialogCopy>
-        {meetingType ? (
+        {meetingName ? (
           <>
-            <StyledLink
-              to={`/${meetingTypeToSlug[meetingType]}/${teamId}`}
-              title={`Join the ${meetingTypeToLabel[meetingType]}`}
-            >
-              Join the {meetingTypeToLabel[meetingType]} Meeting
+            <StyledLink to={`/meet/${meetingId}`} title={`Join ${meetingName}`}>
+              Join {meetingName}
             </StyledLink>{' '}
             <InlineCopy>in progress…</InlineCopy>
           </>
@@ -58,7 +54,8 @@ const TeamInvitationErrorAccepted = (props: Props) => {
 export default createFragmentContainer(TeamInvitationErrorAccepted, {
   verifiedInvitation: graphql`
     fragment TeamInvitationErrorAccepted_verifiedInvitation on VerifiedInvitationPayload {
-      meetingType
+      meetingId
+      meetingName
       teamName
       teamInvitation {
         teamId

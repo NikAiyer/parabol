@@ -17,8 +17,10 @@ import NewMeetingIllustration from './NewMeetingIllustration'
 import {mod} from 'react-swipeable-views-core'
 import useBreakpoint from '../hooks/useBreakpoint'
 import {Breakpoint} from '../types/constEnums'
+import useStoreQueryRetry from 'hooks/useStoreQueryRetry'
 
 interface Props {
+  retry(): void
   teamId?: string | null
   viewer: NewMeeting_viewer
 }
@@ -39,7 +41,7 @@ const NewMeetingBlock = styled('div')<{innerWidth: number; isDesktop: boolean}>(
     gridTemplateColumns: isDesktop ? '8vw minmax(0, 4fr) minmax(0, 3fr)' : '100%',
     gridTemplateRows: isDesktop ? '8vw 4fr 3fr' : '48px',
     gridTemplateAreas: isDesktop
-      ? ` 'backButton x1 x1' 
+      ? ` 'backButton x1 x1'
         'x2 picker howto'
         'x2 settings actions'`
       : `'backButton' 'picker' 'howto' 'settings' 'actions'`,
@@ -71,8 +73,9 @@ const useInnerWidth = () => {
 export const NEW_MEETING_ORDER = [MeetingTypeEnum.retrospective, MeetingTypeEnum.action]
 
 const NewMeeting = (props: Props) => {
-  const {teamId, viewer} = props
+  const {teamId, viewer, retry} = props
   const {teams} = viewer
+  useStoreQueryRetry(retry)
   const {history} = useRouter()
   const innerWidth = useInnerWidth()
   const [idx, setIdx] = useState(0)
@@ -88,6 +91,12 @@ const NewMeeting = (props: Props) => {
   }, [])
   const isDesktop = useBreakpoint(Breakpoint.NEW_MEETING_GRID)
   const selectedTeam = teams.find((team) => team.id === teamId)
+  useEffect(() => {
+    if (!selectedTeam) return
+    const {lastMeetingType} = selectedTeam
+    const meetingIdx = NEW_MEETING_ORDER.indexOf(lastMeetingType as MeetingTypeEnum)
+    setIdx(meetingIdx)
+  }, [teamId])
   if (!teamId || !selectedTeam) return null
   return (
     <NewMeetingBlock innerWidth={innerWidth} isDesktop={isDesktop}>
@@ -101,7 +110,7 @@ const NewMeeting = (props: Props) => {
         <NewMeetingTeamPicker selectedTeam={selectedTeam} teams={teams} />
         <NewMeetingSettings selectedTeam={selectedTeam} meetingType={meetingType} />
       </TeamAndSettings>
-      <NewMeetingActions teamId={selectedTeam.id} meetingType={meetingType} />
+      <NewMeetingActions team={selectedTeam} meetingType={meetingType} />
     </NewMeetingBlock>
   )
 }
@@ -114,7 +123,9 @@ export default createFragmentContainer(NewMeeting, {
         ...NewMeetingTeamPicker_selectedTeam
         ...NewMeetingSettings_selectedTeam
         ...NewMeetingTeamPicker_teams
+        ...NewMeetingActions_team
         id
+        lastMeetingType
         name
         tier
       }

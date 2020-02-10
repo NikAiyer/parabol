@@ -1,13 +1,20 @@
-import {Dashboard_viewer} from '../__generated__/Dashboard_viewer.graphql'
-import React, {lazy} from 'react'
 import styled from '@emotion/styled'
-import {createFragmentContainer} from 'react-relay'
 import graphql from 'babel-plugin-relay/macro'
-import {Route, Switch} from 'react-router'
-import DashSidebar from './Dashboard/DashSidebar'
-import DashAlert from './DashAlert'
-import ResponsiveDashSidebar from './ResponsiveDashSidebar'
+import useBreakpoint from 'hooks/useBreakpoint'
+import React, {lazy} from 'react'
+import {createFragmentContainer} from 'react-relay'
+import {matchPath, Route, RouteProps, Switch} from 'react-router'
+import useRouter from 'hooks/useRouter'
+import {Breakpoint} from 'types/constEnums'
 import useSidebar from '../hooks/useSidebar'
+import {Dashboard_viewer} from '../__generated__/Dashboard_viewer.graphql'
+import DashSidebar from './Dashboard/DashSidebar'
+import MobileDashSidebar from './Dashboard/MobileDashSidebar'
+import DashTopBar from './DashTopBar'
+import MobileDashTopBar from './MobileDashTopBar'
+import SwipeableDashSidebar from './SwipeableDashSidebar'
+import StartMeetingFAB from './StartMeetingFAB'
+import StaticStartMeetingFAB from './StaticStartMeetingFAB'
 
 const UserDashboard = lazy(() =>
   import(
@@ -23,22 +30,43 @@ const NewTeam = lazy(() =>
   )
 )
 
+const getShowFAB = (location: NonNullable<RouteProps['location']>) => {
+  const {pathname} = location
+  return (
+    pathname.includes('/me/tasks') ||
+    !!matchPath(pathname, {
+      path: '/me/',
+      exact: true,
+      strict: true
+    }) ||
+    !!matchPath(pathname, {
+      path: '/me',
+      exact: true,
+      strict: true
+    }) ||
+    !!matchPath(pathname, {
+      path: '/team/:teamId',
+      exact: true,
+      strict: false
+    })
+  )
+}
+
 interface Props {
   viewer: Dashboard_viewer | null
 }
 
 const DashLayout = styled('div')({
   display: 'flex',
+  flexDirection: 'column',
   height: '100%'
   // overflow: 'auto', removed because react-beautiful-dnd only supports 1 scrolling parent
 })
 
 const DashPanel = styled('div')({
   display: 'flex',
-  flexDirection: 'column',
   flex: 1,
   height: '100%',
-  // any overflows should not include the width of the left nav
   overflow: 'hidden'
 })
 
@@ -55,26 +83,32 @@ const DashMain = styled('div')({
 const Dashboard = (props: Props) => {
   const {viewer} = props
   const {isOpen, toggle, handleMenuClick} = useSidebar()
+  const isDesktop = useBreakpoint(Breakpoint.SIDEBAR_LEFT)
+  const {location} = useRouter()
   return (
     <DashLayout>
-      <ResponsiveDashSidebar isOpen={isOpen} onToggle={toggle}>
-        <DashSidebar viewer={viewer} handleMenuClick={handleMenuClick} />
-      </ResponsiveDashSidebar>
+      {isDesktop ? (
+        <DashTopBar viewer={viewer} toggle={toggle} />
+      ) : (
+        <MobileDashTopBar viewer={viewer} toggle={toggle} />
+      )}
       <DashPanel>
-        <DashAlert viewer={viewer} />
+        {isDesktop ? (
+          <DashSidebar viewer={viewer} isOpen={isOpen} />
+        ) : (
+          <SwipeableDashSidebar isOpen={isOpen} onToggle={toggle}>
+            <MobileDashSidebar viewer={viewer} handleMenuClick={handleMenuClick} />
+          </SwipeableDashSidebar>
+        )}
         <DashMain>
           <Switch>
-            <Route
-              path='/me'
-              render={(p) => (
-                <UserDashboard {...p} notifications={viewer ? viewer.notifications : null} />
-              )}
-            />
+            <Route path='/me' component={UserDashboard} />
             <Route path='/team/:teamId' component={TeamRoot} />
             <Route path='/newteam/:defaultOrgId?' component={NewTeam} />
           </Switch>
         </DashMain>
       </DashPanel>
+      {getShowFAB(location) ? isDesktop ? <StaticStartMeetingFAB /> : <StartMeetingFAB /> : null}
     </DashLayout>
   )
 }
@@ -82,18 +116,10 @@ const Dashboard = (props: Props) => {
 export default createFragmentContainer(Dashboard, {
   viewer: graphql`
     fragment Dashboard_viewer on User {
+      ...MobileDashSidebar_viewer
+      ...MobileDashTopBar_viewer
       ...DashAlert_viewer
-      notifications(first: 100) @connection(key: "DashboardWrapper_notifications") {
-        edges {
-          node {
-            id
-            orgId
-            startAt
-            type
-            ...NotificationRow_notification
-          }
-        }
-      }
+      ...DashTopBar_viewer
       ...DashSidebar_viewer
     }
   `

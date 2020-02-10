@@ -1,20 +1,21 @@
-import {NewMeetingAvatarGroup_team} from '../../../../__generated__/NewMeetingAvatarGroup_team.graphql'
-import React, {useEffect, useMemo, useRef} from 'react'
 import styled from '@emotion/styled'
-import {createFragmentContainer} from 'react-relay'
 import graphql from 'babel-plugin-relay/macro'
+import React, {useMemo} from 'react'
+import {createFragmentContainer} from 'react-relay'
 import AddTeamMemberAvatarButton from '../../../../components/AddTeamMemberAvatarButton'
-import NewMeetingAvatar from './NewMeetingAvatar'
 import VideoControls from '../../../../components/VideoControls'
-import {StreamUserDict} from '../../../../hooks/useSwarm'
 import useAtmosphere from '../../../../hooks/useAtmosphere'
 import useBreakpoint from '../../../../hooks/useBreakpoint'
-import MediaSwarm from '../../../../utils/swarm/MediaSwarm'
-import {PALETTE} from '../../../../styles/paletteV2'
-import {meetingAvatarMediaQueries} from '../../../../styles/meeting'
-import {Breakpoint} from '../../../../types/constEnums'
+import useInitialRender from '../../../../hooks/useInitialRender'
+import {StreamUserDict} from '../../../../hooks/useSwarm'
 import useTransition, {TransitionStatus} from '../../../../hooks/useTransition'
 import {DECELERATE} from '../../../../styles/animation'
+import {meetingAvatarMediaQueries} from '../../../../styles/meeting'
+import {PALETTE} from '../../../../styles/paletteV2'
+import {Breakpoint} from '../../../../types/constEnums'
+import MediaSwarm from '../../../../utils/swarm/MediaSwarm'
+import {NewMeetingAvatarGroup_meeting} from '../../../../__generated__/NewMeetingAvatarGroup_meeting.graphql'
+import NewMeetingAvatar from './NewMeetingAvatar'
 
 const MeetingAvatarGroupRoot = styled('div')({
   alignItems: 'center',
@@ -74,7 +75,7 @@ const OverflowCount = styled('div')<{status: TransitionStatus}>(({status}) => ({
 }))
 
 interface Props {
-  team: NewMeetingAvatarGroup_team
+  meeting: NewMeetingAvatarGroup_meeting
   camStreams: StreamUserDict
   swarm: MediaSwarm | null
   allowVideo: boolean
@@ -86,18 +87,21 @@ const OVERFLOW_AVATAR = {key: 'overflow'}
 const NewMeetingAvatarGroup = (props: Props) => {
   const atmosphere = useAtmosphere()
   const {viewerId} = atmosphere
-  const {swarm, team, camStreams, allowVideo} = props
+  const {swarm, meeting, camStreams, allowVideo} = props
+  const {id: meetingId, team} = meeting
   const {id: teamId, teamMembers} = team
   const isDesktop = useBreakpoint(Breakpoint.SINGLE_REFLECTION_COLUMN)
-  const isInitialRenderRef = useRef(true)
-  useEffect(() => {
-    isInitialRenderRef.current = false
-  }, [])
+
   // all connected teamMembers except self
   // TODO: filter by team members who are actually viewing “this” meeting view
   const connectedTeamMembers = useMemo(() => {
     return teamMembers
-      .filter(({user}) => user.isConnected)
+      .filter((teamMember) => {
+        return (
+          teamMember.userId === viewerId ||
+          (teamMember.user.lastSeenAtURL === `/meet/${meetingId}` && teamMember.user.isConnected)
+        )
+      })
       .sort((a, b) =>
         a.userId === viewerId ? -1 : a.user.lastSeenAt! < b.user.lastSeenAt! ? -1 : 1
       )
@@ -114,7 +118,7 @@ const NewMeetingAvatarGroup = (props: Props) => {
       ? visibleConnectedTeamMembers
       : visibleConnectedTeamMembers.concat(OVERFLOW_AVATAR as any)
   const tranChildren = useTransition(allAvatars)
-  const {current: isInit} = isInitialRenderRef
+  const isInit = useInitialRender()
   return (
     <MeetingAvatarGroupRoot>
       <VideoControls
@@ -147,26 +151,34 @@ const NewMeetingAvatarGroup = (props: Props) => {
         )
       })}
       <OverlappingBlock>
-        <AddTeamMemberAvatarButton isMeeting teamId={teamId} teamMembers={teamMembers} />
+        <AddTeamMemberAvatarButton
+          meetingId={meetingId}
+          teamId={teamId}
+          teamMembers={teamMembers}
+        />
       </OverlappingBlock>
     </MeetingAvatarGroupRoot>
   )
 }
 
 export default createFragmentContainer(NewMeetingAvatarGroup, {
-  team: graphql`
-    fragment NewMeetingAvatarGroup_team on Team {
+  meeting: graphql`
+    fragment NewMeetingAvatarGroup_meeting on NewMeeting {
       id
-      teamMembers(sortBy: "checkInOrder") {
-        ...AddTeamMemberAvatarButton_teamMembers
+      team {
         id
-        checkInOrder
-        user {
-          isConnected
-          lastSeenAt
+        teamMembers(sortBy: "checkInOrder") {
+          ...AddTeamMemberAvatarButton_teamMembers
+          id
+          checkInOrder
+          user {
+            isConnected
+            lastSeenAt
+            lastSeenAtURL
+          }
+          userId
+          ...NewMeetingAvatar_teamMember
         }
-        userId
-        ...NewMeetingAvatar_teamMember
       }
     }
   `

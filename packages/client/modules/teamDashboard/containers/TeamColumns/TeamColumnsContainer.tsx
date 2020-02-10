@@ -6,6 +6,7 @@ import TaskColumns from '../../../../components/TaskColumns/TaskColumns'
 import {AreaEnum} from '../../../../types/graphql'
 import toTeamMemberId from '../../../../utils/relay/toTeamMemberId'
 import useAtmosphere from '../../../../hooks/useAtmosphere'
+import getSafeRegex from 'utils/getSafeRegex'
 
 interface Props {
   viewer: TeamColumnsContainer_viewer
@@ -13,29 +14,26 @@ interface Props {
 
 const TeamColumnsContainer = (props: Props) => {
   const {viewer} = props
-  const {team} = viewer
-  const {id: teamId, contentFilter, tasks, teamMembers, teamMemberFilter} = team!
+  const {dashSearch, team} = viewer
+  const {id: teamId, tasks, teamMembers, teamMemberFilter} = team!
   const atmosphere = useAtmosphere()
   const {viewerId} = atmosphere
   const teamMemberFilterId = (teamMemberFilter && teamMemberFilter.id) || null
-  const filteredTasks = useMemo(() => {
-    const contentFilterRegex = new RegExp(contentFilter!, 'i')
-    const nodes = tasks.edges.map(({node}) => node)
-    const contentFilteredNodes = contentFilter
-      ? nodes.filter((task) => {
-          return task.contentText && task.contentText.match(contentFilterRegex)
-        })
-      : nodes
-
-    const teamMemberFilteredNodes = teamMemberFilterId
-      ? contentFilteredNodes.filter((node) => node.assignee.id === teamMemberFilterId)
-      : contentFilteredNodes
-
-    return teamMemberFilteredNodes.map((node) => ({
+  const teamMemberFilteredTasks = useMemo(() => {
+    const nodes = tasks.edges.map(({node}) => ({
       ...node,
       teamMembers
     }))
-  }, [contentFilter, tasks.edges, teamMemberFilterId, teamMembers])
+    return teamMemberFilterId
+      ? nodes.filter((node) => node.assignee.id === teamMemberFilterId)
+      : nodes
+  }, [tasks.edges, teamMemberFilterId, teamMembers])
+
+  const filteredTasks = useMemo(() => {
+    if (!dashSearch) return teamMemberFilteredTasks
+    const dashSearchRegex = getSafeRegex(dashSearch, 'i')
+    return teamMemberFilteredTasks.filter((task) => task.contentText?.match(dashSearchRegex))
+  }, [dashSearch, teamMemberFilteredTasks])
 
   return (
     <TaskColumns
@@ -51,9 +49,9 @@ const TeamColumnsContainer = (props: Props) => {
 export default createFragmentContainer(TeamColumnsContainer, {
   viewer: graphql`
     fragment TeamColumnsContainer_viewer on User {
+      dashSearch
       team(teamId: $teamId) {
         id
-        contentFilter
         teamMemberFilter {
           id
         }

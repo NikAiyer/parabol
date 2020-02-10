@@ -9,8 +9,11 @@ import TimelineLoadingEvents from './TimelineLoadingEvents'
 import TimelineRightDrawer from './TimelineRightDrawer'
 import {DashTimeline} from '../types/constEnums'
 import ErrorBoundary from './ErrorBoundary'
+import useDocumentTitle from 'hooks/useDocumentTitle'
+import useStoreQueryRetry from 'hooks/useStoreQueryRetry'
 
 interface Props {
+  retry(): void
   viewer: MyDashboardTimeline_viewer
 }
 
@@ -20,7 +23,7 @@ const TimelineFeed = styled('div')({
   flex: 1,
   paddingLeft: DashTimeline.MIN_PADDING,
   paddingRight: DashTimeline.MIN_PADDING,
-  paddingTop: 24
+  paddingTop: DashTimeline.MIN_PADDING
 })
 
 export const TimelineFeedItems = styled('div')({
@@ -36,7 +39,9 @@ const FeedAndDrawer = styled('div')({
 })
 
 const MyDashboardTimeline = (props: Props) => {
-  const {viewer} = props
+  const {retry, viewer} = props
+  useStoreQueryRetry(retry)
+  useDocumentTitle('My Timeline | Parabol', 'Timeline')
   return (
     <FeedAndDrawer>
       <TimelineFeed>

@@ -1,4 +1,4 @@
-import React, {ReactNode} from 'react'
+import React, {ReactNode, forwardRef} from 'react'
 import styled from '@emotion/styled'
 import Icon from './Icon'
 import {ICON_SIZE} from '../styles/typographyV2'
@@ -9,8 +9,8 @@ const LabelBlock = styled('div')({
   justifyContent: 'center'
 })
 
-const Label = styled('div')<Pick<Props, 'iconAfter' | 'iconLarge'>>(({iconAfter, iconLarge}) => {
-  const gutter = iconLarge ? '12px' : '8px'
+const Label = styled('div')<Pick<Props, 'iconAfter'>>(({iconAfter}) => {
+  const gutter = '8px'
   return {
     color: 'inherit',
     fontSize: 'inherit',
@@ -34,16 +34,24 @@ interface Props {
   iconAfter?: boolean
   iconLarge?: boolean
   label?: ReactNode
+  onMouseEnter?(): void
+  onMouseLeave?(): void
 }
 
-const IconLabel = (props: Props) => {
-  const {icon, label} = props
+const IconLabel = forwardRef((props: Props, ref: any) => {
+  const {icon, label, onMouseEnter, onMouseLeave, iconAfter, iconLarge} = props
   return (
-    <LabelBlock>
-      <StyledIcon {...props}>{icon}</StyledIcon>
-      {label && <Label {...props}>{label}</Label>}
+    <LabelBlock ref={ref} onMouseEnter={onMouseEnter} onMouseLeave={onMouseLeave}>
+      <StyledIcon iconAfter={iconAfter} iconLarge={iconLarge}>
+        {icon}
+      </StyledIcon>
+      {label && (
+        <Label iconAfter={iconAfter} iconLarge={iconLarge}>
+          {label}
+        </Label>
+      )}
     </LabelBlock>
   )
-}
+})
 
 export default IconLabel

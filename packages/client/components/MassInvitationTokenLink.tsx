@@ -27,6 +27,7 @@ const StyledCopyShortLink = styled(CopyShortLink)({
 })
 
 interface Props {
+  meetingId: string | undefined
   viewer: MassInvitationTokenLink_viewer
 }
 
@@ -34,11 +35,11 @@ const FIVE_MINUTES = ms('5m')
 const acceptableLifeLeft = Threshold.MASS_INVITATION_TOKEN_LIFESPAN - FIVE_MINUTES
 
 const MassInvitationTokenLink = (props: Props) => {
-  const {viewer} = props
+  const {meetingId, viewer} = props
   const {team} = viewer
-  const {id: teamId, massInvitation} = team
+  const {id: teamId, massInvitation} = team!
   const atmosphere = useAtmosphere()
-  const {expiration, id: token} = massInvitation
+  const {expiration, id: token} = massInvitation!
   const tokenLifeRemaining = new Date(expiration).getTime() - Date.now()
   const isTokenValid = tokenLifeRemaining > acceptableLifeLeft
   const {onCompleted, onError, submitMutation, submitting} = useMutationProps()
@@ -47,7 +48,7 @@ const MassInvitationTokenLink = (props: Props) => {
     const doFetch = async () => {
       if (submitting) return
       submitMutation()
-      CreateMassInvitationMutation(atmosphere, {teamId}, {onError, onCompleted})
+      CreateMassInvitationMutation(atmosphere, {meetingId, teamId}, {onError, onCompleted})
     }
     doFetch().catch()
   }, [])
@@ -70,7 +71,7 @@ export default createFragmentContainer(MassInvitationTokenLink, {
     fragment MassInvitationTokenLink_viewer on User {
       team(teamId: $teamId) {
         id
-        massInvitation {
+        massInvitation(meetingId: $meetingId) {
           id
           expiration
         }

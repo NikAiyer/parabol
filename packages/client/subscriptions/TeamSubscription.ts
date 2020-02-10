@@ -26,6 +26,7 @@ import Atmosphere from '../Atmosphere'
 import {requestSubscription, Variables} from 'relay-runtime'
 import {TeamSubscriptionResponse} from '../__generated__/TeamSubscription.graphql'
 import {RouterProps} from 'react-router'
+import {navigateMeetingTeamUpdater} from 'mutations/NavigateMeetingMutation'
 
 const subscription = graphql`
   subscription TeamSubscription {
@@ -39,12 +40,14 @@ const subscription = graphql`
       ...DenyPushInvitationMutation_team @relay(mask: false)
       ...EndNewMeetingMutation_team @relay(mask: false)
       ...MoveReflectTemplatePromptMutation_team @relay(mask: false)
+      ...NavigateMeetingMutation_team @relay(mask: false)
       ...PromoteToTeamLeadMutation_team @relay(mask: false)
       ...PushInvitationMutation_team @relay(mask: false)
       ...RemoveReflectTemplateMutation_team @relay(mask: false)
       ...RemoveReflectTemplatePromptMutation_team @relay(mask: false)
       ...RemoveTeamMemberMutation_team @relay(mask: false)
       ...RemoveOrgUserMutation_team @relay(mask: false)
+      ...RenameMeetingMutation_team @relay(mask: false)
       ...RenameReflectTemplateMutation_team @relay(mask: false)
       ...RenameReflectTemplatePromptMutation_team @relay(mask: false)
       ...SelectRetroTemplateMutation_team @relay(mask: false)
@@ -83,6 +86,7 @@ const updateHandlers = {
   ArchiveTeamPayload: archiveTeamTeamUpdater,
   EndNewMeetingPayload: endNewMeetingTeamUpdater,
   MoveReflectTemplatePromptPayload: moveReflectTemplatePromptTeamUpdater,
+  NavigateMeetingPayload: navigateMeetingTeamUpdater,
   RemoveOrgUserPayload: removeOrgUserTeamUpdater,
   RemoveReflectTemplatePayload: removeReflectTemplateTeamUpdater,
   RemoveReflectTemplatePromptPayload: removeReflectTemplatePromptTeamUpdater,

@@ -1,16 +1,16 @@
-import getRethink from '../../../database/rethinkDriver'
-import StripeManager from '../../../utils/StripeManager'
-import {fromEpochSeconds} from '../../../utils/epochTime'
-import getCCFromCustomer from './getCCFromCustomer'
 import {TierEnum} from '../../../../client/types/graphql'
-import Organization from '../../../database/types/Organization'
+import getRethink from '../../../database/rethinkDriver'
+import {fromEpochSeconds} from '../../../utils/epochTime'
+import setUserTierForOrgId from '../../../utils/setUserTierForOrgId'
+import StripeManager from '../../../utils/StripeManager'
+import getCCFromCustomer from './getCCFromCustomer'
 
 const upgradeToPro = async (orgId: string, source: string, email: string) => {
   const r = await getRethink()
   const now = new Date()
 
   const organization = await r
-    .table<Organization>('Organization')
+    .table('Organization')
     .get(orgId)
     .run()
   if (!organization) throw new Error('Bad orgId')
@@ -58,6 +58,7 @@ const upgradeToPro = async (orgId: string, source: string, email: string) => {
         updatedAt: now
       })
   }).run()
+  await setUserTierForOrgId(orgId)
 }
 
 export default upgradeToPro

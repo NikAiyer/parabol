@@ -1,15 +1,17 @@
 import {
   GraphQLBoolean,
   GraphQLID,
+  GraphQLInt,
   GraphQLList,
   GraphQLNonNull,
   GraphQLObjectType,
   GraphQLString
 } from 'graphql'
-import {forwardConnectionArgs} from 'graphql-relay'
 import isTaskPrivate from 'parabol-client/utils/isTaskPrivate'
 import {ITeam} from '../../../client/types/graphql'
 import toTeamMemberId from '../../../client/utils/relay/toTeamMemberId'
+import getRethink from '../../database/rethinkDriver'
+import MassInvitationDB from '../../database/types/MassInvitation'
 import {getUserId, isTeamMember} from '../../utils/authorization'
 import standardError from '../../utils/standardError'
 import {GQLContext} from '../graphql'
@@ -27,9 +29,6 @@ import TeamInvitation from './TeamInvitation'
 import TeamMeetingSettings from './TeamMeetingSettings'
 import TeamMember from './TeamMember'
 import TierEnum from './TierEnum'
-import getRethink from '../../database/rethinkDriver'
-import MassInvitationDB from '../../database/types/MassInvitation'
-import massInvitation from '../queries/massInvitation'
 
 const Team = new GraphQLObjectType<ITeam, GQLContext>({
   name: 'Team',
@@ -52,11 +51,21 @@ const Team = new GraphQLObjectType<ITeam, GQLContext>({
       description: 'true if the team was created when the account was created, else false',
       resolve: ({isOnboardTeam}) => !!isOnboardTeam
     },
+    lastMeetingType: {
+      type: GraphQLNonNull(MeetingTypeEnum),
+      description: 'The type of the last meeting run'
+    },
     massInvitation: {
       type: MassInvitation,
+      args: {
+        meetingId: {
+          type: GraphQLID,
+          description: 'the meetingId to optionally direct them to'
+        }
+      },
       description:
         'The hash and expiration for a token that allows anyone with it to join the team',
-      resolve: async ({id: teamId}, _args, {authToken, dataLoader}) => {
+      resolve: async ({id: teamId}, {meetingId}, {authToken, dataLoader}) => {
         if (!isTeamMember(authToken, teamId)) return null
         const r = await getRethink()
         const viewerId = getUserId(authToken)
@@ -65,7 +74,9 @@ const Team = new GraphQLObjectType<ITeam, GQLContext>({
           .get('massInvitationsByTeamMemberId')
           .load(teamMemberId)
         const [newestInvitationToken] = invitationTokens
+        // if the token is valid, return it
         if (newestInvitationToken?.expiration > Date.now()) return newestInvitationToken
+        // if the token is not valid, delete it to keep the table clean of expired things
         if (newestInvitationToken) {
           await r
             .table('MassInvitation')
@@ -73,7 +84,7 @@ const Team = new GraphQLObjectType<ITeam, GQLContext>({
             .delete()
             .run()
         }
-        const massInvitation = new MassInvitationDB({teamMemberId})
+        const massInvitation = new MassInvitationDB({meetingId, teamMemberId})
         await r
           .table('MassInvitation')
           .insert(massInvitation, {conflict: 'replace'})
@@ -182,7 +193,9 @@ const Team = new GraphQLObjectType<ITeam, GQLContext>({
     tasks: {
       type: new GraphQLNonNull(TaskConnection),
       args: {
-        ...forwardConnectionArgs,
+        first: {
+          type: GraphQLInt
+        },
         after: {
           type: GraphQLISO8601Type,
           description: 'the datetime cursor'

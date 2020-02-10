@@ -1,21 +1,16 @@
 import ms from 'ms'
 import {Unpromise} from '../../../../client/types/generics'
+import formatTime from '../../../../client/utils/date/formatTime'
+import formatWeekday from '../../../../client/utils/date/formatWeekday'
 import findStageById from '../../../../client/utils/meetings/findStageById'
-import {
-  meetingTypeToLabel,
-  meetingTypeToSlug,
-  phaseLabelLookup
-} from '../../../../client/utils/meetings/lookups'
+import {phaseLabelLookup} from '../../../../client/utils/meetings/lookups'
 import getRethink from '../../../database/rethinkDriver'
-import {MeetingType} from '../../../database/types/Meeting'
 import SlackNotification, {SlackNotificationEvent} from '../../../database/types/SlackNotification'
+import {toEpochSeconds} from '../../../utils/epochTime'
 import makeAppLink from '../../../utils/makeAppLink'
 import sendToSentry from '../../../utils/sendToSentry'
-import SlackManager from '../../../utils/SlackManager'
+import SlackServerManager from '../../../utils/SlackServerManager'
 import {DataLoaderWorker} from '../../graphql'
-import {toEpochSeconds} from '../../../utils/epochTime'
-import formatWeekday from '../../../../client/utils/date/formatWeekday'
-import formatTime from '../../../../client/utils/date/formatTime'
 
 const getSlackDetails = async (
   event: SlackNotificationEvent,
@@ -55,7 +50,7 @@ const notifySlack = async (
     const {notification, auth} = slackDetails[i]
     const {channelId} = notification
     const {accessToken, botAccessToken} = auth
-    const manager = new SlackManager(botAccessToken || accessToken)
+    const manager = new SlackServerManager(botAccessToken || accessToken)
     const res = await manager.postMessage(channelId!, slackText)
 
     if ('error' in res) {
@@ -80,13 +75,12 @@ const notifySlack = async (
 }
 
 export const startSlackMeeting = async (
+  meetingId: string,
   teamId: string,
-  dataLoader: DataLoaderWorker,
-  meetingType: MeetingType
+  dataLoader: DataLoaderWorker
 ) => {
   const team = await dataLoader.get('teams').load(teamId)
-  const meetingSlug = meetingTypeToSlug[meetingType]
-  const meetingUrl = makeAppLink(`${meetingSlug}/${teamId}`)
+  const meetingUrl = makeAppLink(`meet/${meetingId}`)
   const slackText = `${team.name} has started a meeting!\n To join, click here: ${meetingUrl}`
   notifySlack('meetingStart', dataLoader, teamId, slackText).catch(console.log)
 }
@@ -106,8 +100,8 @@ const upsertSlackMessage = async (
   const {channelId} = notification
   const {accessToken, botAccessToken} = auth
   if (!channelId) return
-  const manager = new SlackManager(accessToken)
-  const botManager = new SlackManager(botAccessToken)
+  const manager = new SlackServerManager(accessToken)
+  const botManager = new SlackServerManager(botAccessToken)
   const channelInfo = await manager.getChannelInfo(channelId)
   if (channelInfo.ok) {
     const {channel} = channelInfo
@@ -148,12 +142,10 @@ export const notifySlackTimeLimitStart = async (
     dataLoader.get('teams').load(teamId),
     dataLoader.get('newMeetings').load(meetingId)
   ])
-  const {meetingType, phases, facilitatorStageId} = meeting
+  const {name: meetingName, phases, facilitatorStageId} = meeting
   const stageRes = findStageById(phases, facilitatorStageId)
   const {stage} = stageRes!
-  const slug = meetingTypeToSlug[meetingType]
-  const meetingUrl = makeAppLink(`${slug}/${teamId}`)
-  const meetingLabel = meetingTypeToLabel[meetingType]
+  const meetingUrl = makeAppLink(`meet/${meetingId}`)
   const {phaseType} = stage
   const phaseLabel = phaseLabelLookup[phaseType]
   const slackDetails = await getSlackDetails('MEETING_STAGE_TIME_LIMIT_START', teamId, dataLoader)
@@ -162,7 +154,7 @@ export const notifySlackTimeLimitStart = async (
     const fallbackTime = formatTime(scheduledEndTime)
     const fallbackZone = Intl.DateTimeFormat().resolvedOptions().timeZone || 'Eastern Time'
     const fallback = `${fallbackDate} at ${fallbackTime} (${fallbackZone})`
-    const situation = `The *${phaseLabel} Phase* for your ${meetingLabel} meeting on ${team.name} has begun!`
+    const situation = `The *${phaseLabel} Phase* for ${meetingName} on ${team.name} has begun!`
     const constraint = `You have until *<!date^${toEpochSeconds(
       scheduledEndTime
     )}^{date_short_pretty} at {time}|${fallback}>* to complete it.`

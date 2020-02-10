@@ -10,7 +10,6 @@ import Row from '../../../../components/Row/Row'
 import {WithAtmosphereProps} from '../../../../decorators/withAtmosphere/withAtmosphere'
 import ArchiveTeamContainer from '../../containers/ArchiveTeamContainer/ArchiveTeamContainer'
 import {PALETTE} from '../../../../styles/paletteV2'
-import ui from '../../../../styles/ui'
 import {Layout, TierLabel} from '../../../../types/constEnums'
 import {TierEnum} from '../../../../types/graphql'
 import useDocumentTitle from '../../../../hooks/useDocumentTitle'
@@ -25,7 +24,7 @@ const TeamSettingsLayout = styled('div')({
 
 const PanelsLayout = styled('div')({
   margin: '0 auto',
-  maxWidth: ui.settingsPanelMaxWidth,
+  maxWidth: Layout.SETTINGS_MAX_WIDTH,
   width: '100%'
 })
 
@@ -47,7 +46,7 @@ const TeamSettings = (props: Props) => {
   const {history} = useRouter()
   const {team} = viewer
   const {name: teamName, orgId, teamMembers, tier} = team!
-  useDocumentTitle(`Team Settings | ${teamName}`)
+  useDocumentTitle(`Team Settings | ${teamName}`, 'Team Settings')
   const viewerTeamMember = teamMembers.find((m) => m.isSelf)
   // if kicked out, the component might reload before the redirect occurs
   if (!viewerTeamMember) return null

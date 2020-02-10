@@ -1,34 +1,31 @@
+import graphql from 'babel-plugin-relay/macro'
+import {RouterProps} from 'react-router'
+import {requestSubscription, Variables} from 'relay-runtime'
+import {RecordSourceSelectorProxy} from 'relay-runtime/lib/store/RelayStoreTypes'
+import {InvalidateSessionsMutation_notification} from '__generated__/InvalidateSessionsMutation_notification.graphql'
+import {NotificationSubscription_meetingStageTimeLimitEnd} from '__generated__/NotificationSubscription_meetingStageTimeLimitEnd.graphql'
+import {NotificationSubscription_paymentRejected} from '__generated__/NotificationSubscription_paymentRejected.graphql'
+import Atmosphere from '../Atmosphere'
+import {acceptTeamInvitationNotificationUpdater} from '../mutations/AcceptTeamInvitationMutation'
 import {addOrgMutationNotificationUpdater} from '../mutations/AddOrgMutation'
 import {addTeamMutationNotificationUpdater} from '../mutations/AddTeamMutation'
-import {clearNotificationNotificationUpdater} from '../mutations/ClearNotificationMutation'
 import {
   createTaskNotificationOnNext,
   createTaskNotificationUpdater
 } from '../mutations/CreateTaskMutation'
-import {deleteTaskNotificationUpdater} from '../mutations/DeleteTaskMutation'
+import {endNewMeetingNotificationUpdater} from '../mutations/EndNewMeetingMutation'
 import handleAddNotifications from '../mutations/handlers/handleAddNotifications'
-import {
-  removeOrgUserNotificationOnNext,
-  removeOrgUserNotificationUpdater
-} from '../mutations/RemoveOrgUserMutation'
 import {
   inviteToTeamNotificationOnNext,
   inviteToTeamNotificationUpdater
 } from '../mutations/InviteToTeamMutation'
-import {acceptTeamInvitationNotificationUpdater} from '../mutations/AcceptTeamInvitationMutation'
-import {endNewMeetingNotificationUpdater} from '../mutations/EndNewMeetingMutation'
-import graphql from 'babel-plugin-relay/macro'
-import {meetingTypeToLabel, meetingTypeToSlug} from '../utils/meetings/lookups'
-import {OnNextHandler, OnNextHistoryContext, UpdaterHandler} from '../types/relayMutations'
-import {requestSubscription, Variables} from 'relay-runtime'
-import {NotificationSubscriptionResponse} from '../__generated__/NotificationSubscription.graphql'
-import Atmosphere from '../Atmosphere'
-import {RouterProps} from 'react-router'
-import {RecordSourceSelectorProxy} from 'relay-runtime/lib/store/RelayStoreTypes'
-import {NotificationSubscription_meetingStageTimeLimitEnd} from '__generated__/NotificationSubscription_meetingStageTimeLimitEnd.graphql'
-import {NotificationSubscription_paymentRejected} from '__generated__/NotificationSubscription_paymentRejected.graphql'
+import {
+  removeOrgUserNotificationOnNext,
+  removeOrgUserNotificationUpdater
+} from '../mutations/RemoveOrgUserMutation'
 import {LocalStorageKey} from '../types/constEnums'
-import {InvalidateSessionsMutation_notification} from '__generated__/InvalidateSessionsMutation_notification.graphql'
+import {OnNextHandler, OnNextHistoryContext, UpdaterHandler} from '../types/relayMutations'
+import {NotificationSubscriptionResponse} from '../__generated__/NotificationSubscription.graphql'
 
 graphql`
   fragment NotificationSubscription_paymentRejected on StripeFailPaymentPayload {
@@ -49,7 +46,7 @@ graphql`
       type
       meeting {
         id
-        meetingType
+        name
         team {
           id
           name
@@ -65,9 +62,8 @@ const subscription = graphql`
       __typename
       ...AddOrgMutation_notification @relay(mask: false)
       ...AddTeamMutation_notification @relay(mask: false)
-      ...ClearNotificationMutation_notification @relay(mask: false)
+      ...SetNotificationStatusMutation_notification @relay(mask: false)
       ...CreateTaskMutation_notification @relay(mask: false)
-      ...DeleteTaskMutation_notification @relay(mask: false)
       ...EndNewMeetingMutation_notification @relay(mask: false)
       ...InviteToTeamMutation_notification @relay(mask: false)
       ...RemoveOrgUserMutation_notification @relay(mask: false)
@@ -153,18 +149,16 @@ const meetingStageTimeLimitOnNext: OnNextHandler<
   if (!payload || payload.__typename !== 'MeetingStageTimeLimitPayload') return
   const {timeLimitNotification} = payload
   const {meeting} = timeLimitNotification
-  const {meetingType, team, id: meetingId} = meeting
-  const {id: teamId, name: teamName} = team
-  const meetingLabel = meetingTypeToLabel[meetingType]
-  const meetingSlug = meetingTypeToSlug[meetingType]
+  const {name: meetingName, team, id: meetingId} = meeting
+  const {name: teamName} = team
   atmosphere.eventEmitter.emit('addSnackbar', {
     key: `meetingStageLimitReached:${meetingId}`,
     autoDismiss: 10,
-    message: `Your ${meetingLabel} meeting for ${teamName} is ready to move forward!`,
+    message: `${meetingName} for ${teamName} is ready to move forward!`,
     action: {
       label: 'Go there',
       callback: () => {
-        history!.push(`/${meetingSlug}/${teamId}`)
+        history!.push(`/meet/${meetingId}`)
       }
     }
   })
@@ -246,14 +240,8 @@ const NotificationSubscription = (
         case 'AddTeamPayload':
           addTeamMutationNotificationUpdater(payload, context)
           break
-        case 'ClearNotificationPayload':
-          clearNotificationNotificationUpdater(payload, store)
-          break
         case 'CreateTaskPayload':
           createTaskNotificationUpdater(payload as any, context)
-          break
-        case 'DeleteTaskPayload':
-          deleteTaskNotificationUpdater(payload, store)
           break
         case 'DisconnectSocketPayload':
           break

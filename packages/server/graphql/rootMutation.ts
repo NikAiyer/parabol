@@ -2,7 +2,7 @@ import {GraphQLObjectType} from 'graphql'
 import addAgendaItem from './mutations/addAgendaItem'
 import addOrg from './mutations/addOrg'
 import archiveTeam from './mutations/archiveTeam'
-import clearNotification from './mutations/clearNotification'
+import setNotificationStatus from './mutations/setNotificationStatus'
 import changeTaskTeam from './mutations/changeTaskTeam'
 import createGitHubIssue from './mutations/createGitHubIssue'
 import createTask from './mutations/createTask'
@@ -83,6 +83,11 @@ import emailPasswordReset from './mutations/emailPasswordReset'
 import resetPassword from './mutations/resetPassword'
 import invalidateSessions from './mutations/invalidateSessions'
 import createMassInvitation from './mutations/createMassInvitation'
+import renameMeeting from './mutations/renameMeeting'
+import addReactjiToReflection from './mutations/addReactjiToReflection'
+import setAppLocation from './mutations/setAppLocation'
+import deleteUser from './mutations/deleteUser'
+import verifyEmail from './mutations/verifyEmail'
 
 interface Context extends InternalContext, GQLContext {}
 
@@ -92,6 +97,7 @@ export default new GraphQLObjectType<any, Context, any>({
     acceptTeamInvitation,
     addAgendaItem,
     addAtlassianAuth,
+    addReactjiToReflection,
     addReflectTemplate,
     addReflectTemplatePrompt,
     addSlackAuth,
@@ -102,7 +108,7 @@ export default new GraphQLObjectType<any, Context, any>({
     archiveTeam,
     autoGroupReflections,
     changeTaskTeam,
-    clearNotification,
+    setNotificationStatus,
     createImposterToken,
     createGitHubIssue,
     createJiraIssue,
@@ -112,6 +118,7 @@ export default new GraphQLObjectType<any, Context, any>({
     createTask,
     createUserPicturePutUrl,
     deleteTask,
+    deleteUser,
     denyPushInvitation,
     dismissNewFeature,
     dismissSuggestedAction,
@@ -142,6 +149,7 @@ export default new GraphQLObjectType<any, Context, any>({
     removeOrgUser,
     removeReflectTemplate,
     removeReflectTemplatePrompt,
+    renameMeeting,
     renameReflectTemplate,
     renameReflectTemplatePrompt,
     removeReflection,
@@ -150,6 +158,7 @@ export default new GraphQLObjectType<any, Context, any>({
     resetPassword,
     segmentEventTrack,
     selectRetroTemplate,
+    setAppLocation,
     setCheckInEnabled,
     setOrgUserRole,
     setPhaseFocus,
@@ -170,6 +179,7 @@ export default new GraphQLObjectType<any, Context, any>({
     updateTaskDueDate,
     updateTeamName,
     updateUserProfile,
+    verifyEmail,
     voteForReflectionGroup,
     upgradeToPro
   })

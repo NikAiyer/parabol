@@ -39,12 +39,12 @@ const OutcomeCardContainer = memo((props: Props) => {
   const {removeTaskChild, addTaskChild, useTaskChild, isTaskFocused} = useTaskChildFocus(taskId)
 
   const handleCardUpdate = () => {
-    if (isTaskFocused()) return
+    const isFocused = isTaskFocused()
     if (isAndroid) {
       const editorEl = editorRef.current
       if (!editorEl || editorEl.type !== 'textarea') return
       const {value} = editorEl
-      if (!value) {
+      if (!value && !isFocused) {
         DeleteTaskMutation(atmosphere, taskId, teamId)
       } else {
         const initialContentState = editorStateRef.current.getCurrentContent()
@@ -59,7 +59,8 @@ const OutcomeCardContainer = memo((props: Props) => {
       return
     }
     const nextContentState = editorStateRef.current.getCurrentContent()
-    if (!nextContentState.hasText()) {
+    const hasText = nextContentState.hasText()
+    if (!hasText && !isFocused) {
       DeleteTaskMutation(atmosphere, taskId, teamId)
     } else {
       const content = JSON.stringify(convertToRaw(nextContentState))
@@ -85,7 +86,10 @@ const OutcomeCardContainer = memo((props: Props) => {
     <div
       tabIndex={-1}
       style={{outline: 'none'}}
-      onFocus={() => addTaskChild('root')}
+      onFocus={() => {
+        // clicking into text requires this be triggered all the time
+        addTaskChild('root')
+      }}
       onBlur={() => {
         removeTaskChild('root')
         setTimeout(handleCardUpdate)

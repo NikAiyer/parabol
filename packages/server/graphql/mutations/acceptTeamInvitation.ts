@@ -1,5 +1,5 @@
 import {GraphQLID, GraphQLNonNull} from 'graphql'
-import {SubscriptionChannel} from 'parabol-client/types/constEnums'
+import {SubscriptionChannel, InvitationTokenError} from 'parabol-client/types/constEnums'
 import toTeamMemberId from '../../../client/utils/relay/toTeamMemberId'
 import AuthToken from '../../database/types/AuthToken'
 import acceptTeamInvitation from '../../safeMutations/acceptTeamInvitation'
@@ -7,7 +7,6 @@ import {getUserId, isAuthenticated} from '../../utils/authorization'
 import encodeAuthToken from '../../utils/encodeAuthToken'
 import publish from '../../utils/publish'
 import sendSegmentEvent from '../../utils/sendSegmentEvent'
-import standardError from '../../utils/standardError'
 import rateLimit from '../rateLimit'
 import AcceptTeamInvitationPayload from '../types/AcceptTeamInvitationPayload'
 import handleInvitationToken from './helpers/handleInvitationToken'
@@ -61,12 +60,21 @@ export default {
         dataLoader,
         notificationId
       )
-      if (invitationRes.error)
-        return standardError(new Error(invitationRes.error), {userId: viewerId})
+      if (invitationRes.error) {
+        const {error: message, teamId, meetingId} = invitationRes
+        if (message === InvitationTokenError.ALREADY_ACCEPTED) {
+          return {error: {message}, teamId, meetingId}
+        }
+        return {error: {message}}
+      }
+
       const {invitation} = invitationRes
-      const {teamId} = invitation
+      const {meetingId, teamId} = invitation
+      const meeting = meetingId ? await dataLoader.get('newMeetings').load(meetingId) : null
+      const activeMeetingId = meeting && !meeting.endedAt ? meetingId : null
+
       // RESOLUTION
-      const {teamLeadUserIdWithNewActions, removedNotificationIds} = await acceptTeamInvitation(
+      const {teamLeadUserIdWithNewActions, invitationNotificationIds} = await acceptTeamInvitation(
         teamId,
         viewerId,
         dataLoader
@@ -77,9 +85,10 @@ export default {
       const teamMemberId = toTeamMemberId(teamId, viewerId)
 
       const data = {
+        meetingId: activeMeetingId,
         teamId,
         teamMemberId,
-        removedNotificationIds
+        invitationNotificationIds
       }
 
       const encodedAuthToken = encodeAuthToken(new AuthToken({tms, sub: viewerId}))
@@ -88,7 +97,7 @@ export default {
       publish(SubscriptionChannel.NOTIFICATION, viewerId, 'AuthTokenPayload', {tms})
 
       // remove the old notifications
-      if (removedNotificationIds.length > 0) {
+      if (invitationNotificationIds.length > 0) {
         publish(
           SubscriptionChannel.NOTIFICATION,
           viewerId,

@@ -7,6 +7,9 @@ import normalizeRawDraftJS from '../../../client/validation/normalizeRawDraftJS'
 import UpdateNewCheckInQuestionPayload from '../types/UpdateNewCheckInQuestionPayload'
 import standardError from '../../utils/standardError'
 import {SubscriptionChannel} from 'parabol-client/types/constEnums'
+import convertToTaskContent from 'parabol-client/utils/draftjs/convertToTaskContent'
+import {makeCheckinQuestion} from 'parabol-client/utils/makeCheckinGreeting'
+import CheckInPhase from '../../database/types/CheckInPhase'
 
 export default {
   type: UpdateNewCheckInQuestionPayload,
@@ -44,10 +47,13 @@ export default {
     }
 
     // VALIDATION
-    const normalizedCheckInQuestion = normalizeRawDraftJS(checkInQuestion)
+    const normalizedCheckInQuestion = checkInQuestion
+      ? normalizeRawDraftJS(checkInQuestion)
+      : convertToTaskContent(makeCheckinQuestion(Math.floor(Math.random() * 1000), teamId))
 
     // RESOLUTION
-    const checkInPhase = phases.find((phase) => phase.phaseType === CHECKIN)
+    const checkInPhase = phases.find((phase) => phase.phaseType === CHECKIN) as CheckInPhase
+
     // mutative
     checkInPhase.checkInQuestion = normalizedCheckInQuestion
     await r

@@ -1,8 +1,8 @@
 import {GraphQLID, GraphQLObjectType, GraphQLString} from 'graphql'
 import TeamInvitationErrorEnum from './TeamInvitationErrorEnum'
-import MeetingTypeEnum from './MeetingTypeEnum'
+import {GQLContext} from '../graphql'
 
-const MassInvitationPayload = new GraphQLObjectType({
+const MassInvitationPayload = new GraphQLObjectType<any, GQLContext>({
   name: 'MassInvitationPayload',
   fields: () => ({
     errorType: {
@@ -20,10 +20,10 @@ const MassInvitationPayload = new GraphQLObjectType({
     teamName: {
       type: GraphQLString,
       description: 'name of the inviting team, present if invitation exists'
-    },
-    meetingType: {
-      type: MeetingTypeEnum
     }
+    // meetingType: {
+    // type: MeetingTypeEnum
+    // }
   })
 })
 

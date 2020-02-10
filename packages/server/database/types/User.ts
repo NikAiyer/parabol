@@ -1,6 +1,7 @@
 import {AuthTokenRole} from 'parabol-client/types/constEnums'
 import AuthIdentity from './AuthIdentity'
 import shortid from 'shortid'
+import {TierEnum} from 'parabol-client/types/graphql'
 
 interface Input {
   id?: string
@@ -8,7 +9,6 @@ interface Input {
   email: string
   emailVerified?: boolean
   featureFlags?: string[]
-  lastLogin?: Date
   lastSeenAt?: Date
   lastSeenAtURL?: string
   updatedAt?: Date
@@ -17,6 +17,7 @@ interface Input {
   identities?: AuthIdentity[]
   createdAt?: Date
   segmentId?: string
+  tier?: TierEnum
   tms?: string[]
 }
 
@@ -30,15 +31,18 @@ export default class User {
   email: string
   emailVerified: boolean
   featureFlags: string[]
-  lastLogin: Date | null
   lastSeenAt: Date | null
   lastSeenAtURL: string | null
   updatedAt: Date
+  newFeatureId?: string | null
+  overLimitCopy?: string | null
   picture: string
   inactive: boolean
   identities: AuthIdentity[]
+  isRemoved?: true
   createdAt: Date
   segmentId?: string
+  tier: TierEnum
   tms: string[]
   rol?: AuthTokenRole.SUPER_USER
   constructor(input: Input) {
@@ -55,9 +59,9 @@ export default class User {
       lastSeenAtURL,
       identities,
       inactive,
-      lastLogin,
       preferredName,
-      segmentId
+      segmentId,
+      tier
     } = input
     const avatarName =
       preferredName
@@ -78,10 +82,10 @@ export default class User {
     this.featureFlags = featureFlags || []
     this.identities = identities || []
     this.inactive = inactive || false
-    this.lastLogin = lastLogin || null
     this.lastSeenAt = lastSeenAt ?? null
     this.lastSeenAtURL = lastSeenAtURL ?? null
     this.preferredName = preferredName
     this.segmentId = segmentId
+    this.tier = tier ?? TierEnum.personal
   }
 }

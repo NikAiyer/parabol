@@ -21,6 +21,7 @@ graphql`
     isKill
     meeting {
       id
+      endedAt
       teamId
     }
     team {
@@ -80,8 +81,6 @@ export const endNewMeetingTeamOnNext: OnNextHandler<
   const {atmosphere, history} = context
   if (!meeting) return
   const {id: meetingId, teamId} = meeting
-  // const {} = getMeetingPathParams()
-  // if (!meetingSlug) return
   if (meetingId === RetroDemo.MEETING_ID) {
     if (isKill) {
       window.localStorage.removeItem('retroDemo')

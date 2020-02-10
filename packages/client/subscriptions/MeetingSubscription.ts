@@ -9,7 +9,6 @@ import {
   endDraggingReflectionMeetingOnNext,
   endDraggingReflectionMeetingUpdater
 } from '../mutations/EndDraggingReflectionMutation'
-import {navigateMeetingMeetingUpdater} from '../mutations/NavigateMeetingMutation'
 import {promoteNewMeetingFacilitatorMeetingOnNext} from '../mutations/PromoteNewMeetingFacilitatorMutation'
 import {removeReflectionMeetingUpdater} from '../mutations/RemoveReflectionMutation'
 import {setStageTimerMeetingUpdater} from '../mutations/SetStageTimerMutation'
@@ -20,14 +19,15 @@ const subscription = graphql`
   subscription MeetingSubscription($meetingId: ID!) {
     meetingSubscription(meetingId: $meetingId) {
       __typename
+      ...AddReactjiToReflectionMutation_meeting @relay(mask: false)
       ...CreateReflectionMutation_meeting @relay(mask: false)
       ...DragDiscussionTopicMutation_meeting @relay(mask: false)
       ...EditReflectionMutation_meeting @relay(mask: false)
       ...EndDraggingReflectionMutation_meeting @relay(mask: false)
-      ...NavigateMeetingMutation_meeting @relay(mask: false)
       ...NewMeetingCheckInMutation_meeting @relay(mask: false)
       ...PromoteNewMeetingFacilitatorMutation_meeting @relay(mask: false)
       ...RemoveReflectionMutation_meeting @relay(mask: false)
+      ...SetAppLocationMutation_meeting @relay(mask: false)
       ...SetPhaseFocusMutation_meeting @relay(mask: false)
       ...SetStageTimerMutation_meeting @relay(mask: false)
       ...StartDraggingReflectionMutation_meeting @relay(mask: false)
@@ -50,7 +50,6 @@ const updateHandlers = {
   DragDiscussionTopicPayload: dragDiscussionTopicMeetingUpdater,
   EditReflectionPayload: editReflectionMeetingUpdater,
   EndDraggingReflectionPayload: endDraggingReflectionMeetingUpdater,
-  NavigateMeetingPayload: navigateMeetingMeetingUpdater,
   RemoveReflectionPayload: removeReflectionMeetingUpdater,
   SetStageTimerPayload: setStageTimerMeetingUpdater,
   StartDraggingReflectionPayload: startDraggingReflectionMeetingUpdater

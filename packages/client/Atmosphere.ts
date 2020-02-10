@@ -28,6 +28,10 @@ import handleInvalidatedSession from './hooks/handleInvalidatedSession'
 import {LocalStorageKey, TrebuchetCloseReason} from './types/constEnums'
 import handlerProvider from './utils/relay/handlerProvider'
 import {InviteToTeamMutation_notification} from './__generated__/InviteToTeamMutation_notification.graphql'
+import RelayFeatureFlags from 'relay-runtime/lib/util/RelayFeatureFlags'
+
+// https://github.com/facebook/relay/issues/3006
+;(RelayFeatureFlags as any).ENABLE_RELAY_CONTAINERS_SUSPENSE = false
 
 interface QuerySubscription {
   subKey: string
@@ -83,6 +87,7 @@ export default class Atmosphere extends Environment {
   queryTimeouts: {
     [queryKey: string]: number
   } = {}
+  retries = new Set<() => void>()
   subscriptions: Subscriptions = {}
   eventEmitter: StrictEventEmitter<EventEmitter, AtmosphereEvents> = new EventEmitter()
   queryCache = {} as {[key: string]: GraphQLResponse}
@@ -164,7 +169,7 @@ export default class Atmosphere extends Environment {
   trySockets = () => {
     const wsProtocol = window.location.protocol.replace('http', 'ws')
     const url = `${wsProtocol}//${window.location.host}/?token=${this.authToken}`
-    return new SocketTrebuchet({url, batchDelay: 0})
+    return new SocketTrebuchet({url})
   }
 
   trySSE = () => {

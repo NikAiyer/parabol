@@ -43,7 +43,7 @@ const loginWithGoogle = {
       const {email, picture, name, email_verified, sub} = id
 
       const existingUser = await r
-        .table<User>('User')
+        .table('User')
         .getAll(email, {index: 'email'})
         .nth(0)
         .default(null)
@@ -64,7 +64,7 @@ const loginWithGoogle = {
           // if it's not, they need to reset the password
           if (!isEmailVerified) {
             if (type === AuthIdentityTypeEnum.LOCAL) {
-              return standardError(new Error('Try logging in with email and password'))
+              return {error: {message: 'Try logging in with email and password'}}
             }
             throw new Error(`Unknown identity type: ${type}`)
           }

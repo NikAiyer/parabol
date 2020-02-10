@@ -9,7 +9,10 @@ const safeArchiveTeam = async (teamId: string) => {
     team: r
       .table('Team')
       .get(teamId)
-      .update({isArchived: true}, {returnChanges: true})('changes')(0)('new_val')
+      .update(
+        {isArchived: true},
+        {returnChanges: true}
+      )('changes')(0)('new_val')
       .default(null),
     users: (r
       .table('TeamMember')
@@ -32,12 +35,6 @@ const safeArchiveTeam = async (teamId: string) => {
       .update((invitation) => ({
         expiresAt: r.min([invitation('expiresAt'), now])
       })),
-    removedTeamNotifications: r
-      .table('Notification')
-      // TODO index
-      .filter({teamId})
-      .delete({returnChanges: true})('changes')('new_val')
-      .default([]),
     removedSuggestedActionIds: r
       .table('SuggestedAction')
       .filter({teamId})

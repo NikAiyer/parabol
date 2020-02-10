@@ -1,38 +1,34 @@
 import crypto from 'crypto'
 import promisify from 'es6-promisify'
 import {GraphQLID, GraphQLList, GraphQLNonNull} from 'graphql'
+import {SubscriptionChannel} from 'parabol-client/types/constEnums'
+import {SuggestedActionTypeEnum} from 'parabol-client/types/graphql'
 import getRethink from '../../database/rethinkDriver'
+import NotificationTeamInvitation from '../../database/types/NotificationTeamInvitation'
+import TeamInvitation from '../../database/types/TeamInvitation'
 import sendEmailPromise from '../../email/sendEmail'
-import rateLimit from '../rateLimit'
-import GraphQLEmailType from '../types/GraphQLEmailType'
+import removeSuggestedAction from '../../safeMutations/removeSuggestedAction'
 import {getUserId, isTeamMember} from '../../utils/authorization'
+import getBestInvitationMeeting from '../../utils/getBestInvitationMeeting'
 import makeAppLink from '../../utils/makeAppLink'
 import publish from '../../utils/publish'
-import shortid from 'shortid'
-import removeSuggestedAction from '../../safeMutations/removeSuggestedAction'
-import standardError from '../../utils/standardError'
-import InviteToTeamPayload from '../types/InviteToTeamPayload'
-import {TEAM_INVITATION_LIFESPAN} from '../../utils/serverConstants'
-import TeamInvitation from '../../database/types/TeamInvitation'
-import {NotificationEnum, SuggestedActionTypeEnum} from 'parabol-client/types/graphql'
-import {SubscriptionChannel} from 'parabol-client/types/constEnums'
 import sendSegmentEvent from '../../utils/sendSegmentEvent'
+import {TEAM_INVITATION_LIFESPAN} from '../../utils/serverConstants'
+import standardError from '../../utils/standardError'
+import rateLimit from '../rateLimit'
+import GraphQLEmailType from '../types/GraphQLEmailType'
+import InviteToTeamPayload from '../types/InviteToTeamPayload'
 
 const randomBytes = promisify(crypto.randomBytes, crypto)
-
-interface NotificationToInsert {
-  id: string
-  type: string
-  startAt: Date
-  userIds: string[]
-  invitationId: string
-  teamId: string
-}
 
 export default {
   type: new GraphQLNonNull(InviteToTeamPayload),
   description: 'Send a team invitation to an email address',
   args: {
+    meetingId: {
+      type: GraphQLID,
+      description: 'the specific meeting where the invite occurred, if any'
+    },
     teamId: {
       type: new GraphQLNonNull(GraphQLID),
       description: 'The id of the inviting team'
@@ -42,10 +38,13 @@ export default {
     }
   },
   resolve: rateLimit({perMinute: 10, perHour: 100})(
-    async (_source, {invitees, teamId}, {authToken, dataLoader, socketId: mutatorId}) => {
+    async (
+      _source,
+      {invitees, meetingId, teamId},
+      {authToken, dataLoader, socketId: mutatorId}
+    ) => {
       const operationId = dataLoader.share()
       const r = await getRethink()
-      const now = new Date()
 
       // AUTH
       const viewerId = getUserId(authToken)
@@ -78,6 +77,7 @@ export default {
           expiresAt,
           email,
           invitedBy: viewerId,
+          meetingId,
           teamId,
           token: tokens[idx]
         })
@@ -96,18 +96,17 @@ export default {
         )
       }
       // insert notification records
-      const notificationsToInsert = [] as NotificationToInsert[]
+      const notificationsToInsert = [] as NotificationTeamInvitation[]
       teamInvitationsToInsert.forEach((invitation) => {
         const user = users.find((user) => user.email === invitation.email)
         if (user) {
-          notificationsToInsert.push({
-            id: shortid.generate(),
-            type: NotificationEnum.TEAM_INVITATION,
-            startAt: now,
-            userIds: [user.id],
-            invitationId: invitation.id,
-            teamId
-          })
+          notificationsToInsert.push(
+            new NotificationTeamInvitation({
+              userId: user.id,
+              invitationId: invitation.id,
+              teamId
+            })
+          )
         }
       })
       if (notificationsToInsert.length > 0) {
@@ -116,8 +115,8 @@ export default {
           .insert(notificationsToInsert)
           .run()
       }
-      const activeMeetings = await dataLoader.get('activeMeetingsByTeamId').load(teamId)
-      const [firstActiveMeeting] = activeMeetings
+
+      const bestMeeting = await getBestInvitationMeeting(teamId, meetingId, dataLoader)
 
       // send emails
       const emailResults = await Promise.all(
@@ -130,7 +129,7 @@ export default {
             inviterName: inviter.preferredName,
             inviterEmail: inviter.email,
             teamName,
-            meeting: firstActiveMeeting
+            meeting: bestMeeting
           })
         })
       )
@@ -144,10 +143,7 @@ export default {
 
       // Tell each invitee
       notificationsToInsert.forEach((notification) => {
-        const {
-          userIds: [userId],
-          id: teamInvitationNotificationId
-        } = notification
+        const {userId, id: teamInvitationNotificationId} = notification
         const subscriberData = {
           ...data,
           teamInvitationNotificationId

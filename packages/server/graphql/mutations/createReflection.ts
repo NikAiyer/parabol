@@ -1,22 +1,21 @@
 import {GraphQLNonNull} from 'graphql'
-import getRethink from '../../database/rethinkDriver'
-import {getUserId, isTeamMember} from '../../utils/authorization'
-import CreateReflectionPayload from '../types/CreateReflectionPayload'
-import normalizeRawDraftJS from '../../../client/validation/normalizeRawDraftJS'
-import publish from '../../utils/publish'
-import isPhaseComplete from '../../../client/utils/meetings/isPhaseComplete'
-import CreateReflectionInput from '../types/CreateReflectionInput'
-import unlockAllStagesForPhase from '../../../client/utils/unlockAllStagesForPhase'
-import standardError from '../../utils/standardError'
-import {NewMeetingPhaseTypeEnum} from 'parabol-client/types/graphql'
 import {SubscriptionChannel} from 'parabol-client/types/constEnums'
-import Reflection from '../../database/types/Reflection'
-import ReflectionGroup from '../../database/types/ReflectionGroup'
-import getReflectionEntities from './helpers/getReflectionEntities'
+import {NewMeetingPhaseTypeEnum} from 'parabol-client/types/graphql'
+import getGroupSmartTitle from 'parabol-client/utils/autogroup/getGroupSmartTitle'
 import extractTextFromDraftString from 'parabol-client/utils/draftjs/extractTextFromDraftString'
 import shortid from 'shortid'
-import getGroupSmartTitle from 'parabol-client/utils/autogroup/getGroupSmartTitle'
-import Meeting from '../../database/types/Meeting'
+import isPhaseComplete from '../../../client/utils/meetings/isPhaseComplete'
+import unlockAllStagesForPhase from '../../../client/utils/unlockAllStagesForPhase'
+import normalizeRawDraftJS from '../../../client/validation/normalizeRawDraftJS'
+import getRethink from '../../database/rethinkDriver'
+import Reflection from '../../database/types/Reflection'
+import ReflectionGroup from '../../database/types/ReflectionGroup'
+import {getUserId, isTeamMember} from '../../utils/authorization'
+import publish from '../../utils/publish'
+import standardError from '../../utils/standardError'
+import CreateReflectionInput from '../types/CreateReflectionInput'
+import CreateReflectionPayload from '../types/CreateReflectionPayload'
+import getReflectionEntities from './helpers/getReflectionEntities'
 
 export default {
   type: CreateReflectionPayload,
@@ -47,16 +46,18 @@ export default {
     }
     const {teamId} = phaseItem
     if (!isTeamMember(authToken, teamId)) {
-      return standardError(new Error('Team not found'), {userId: viewerId})
+      return standardError(new Error('Team not found'), {userId: viewerId, tags: {teamId}})
     }
     const meeting = await r
-      .table<Meeting>('NewMeeting')
+      .table('NewMeeting')
       .get(meetingId)
       .default(null)
       .run()
     if (!meeting) return standardError(new Error('Meeting not found'), {userId: viewerId})
     const {endedAt, phases} = meeting
-    if (endedAt) return standardError(new Error('Meeting already ended'), {userId: viewerId})
+    if (endedAt) {
+      return {error: {message: 'Meeting already ended'}}
+    }
     if (isPhaseComplete(NewMeetingPhaseTypeEnum.group, phases)) {
       return standardError(new Error('Meeting phase already completed'), {userId: viewerId})
     }

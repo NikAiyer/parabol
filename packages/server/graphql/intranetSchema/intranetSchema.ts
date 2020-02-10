@@ -13,9 +13,8 @@ import user from './queries/user'
 import flagOverLimit from './mutations/flagOverLimit'
 import runScheduledJobs from './mutations/runScheduledJobs'
 import {GQLContext} from '../graphql'
-import loginSSO from './mutations/loginSSO'
 import draftEnterpriseInvoice from './mutations/draftEnterpriseInvoice'
-import githubAddAssignee from './mutations/githubAddAssignee'
+// import githubAddAssignee from './mutations/g/ithubAddAssignee'
 import stripeCreateInvoice from './mutations/stripeCreateInvoice'
 import stripeFailPayment from './mutations/stripeFailPayment'
 import stripeSucceedPayment from './mutations/stripeSucceedPayment'
@@ -56,9 +55,8 @@ const mutation = new GraphQLObjectType<any, GQLContext, any>({
     endOldMeetings,
     flagConversionModal,
     flagOverLimit,
-    githubAddAssignee,
+    // githubAddAssignee,
     loginSAML,
-    loginSSO,
     runScheduledJobs,
     sendBatchNotificationEmails,
     sendUpcomingInvoiceEmails,
