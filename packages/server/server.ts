@@ -32,7 +32,11 @@ if (!PROD) {
 }
 
 uws
-  .App()
+  .SSLApp({
+    key_file_name: './parabol-dev-key.pem',
+    cert_file_name: './parabol-dev-cert.pem',
+    passphrase: '1234'
+  })
   .get('/favicon.ico', PWAHandler)
   .get('/sw.js', PWAHandler)
   .get('/manifest.json', PWAHandler)
